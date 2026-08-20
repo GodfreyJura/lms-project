@@ -43,6 +43,7 @@ const sanitizeString = (value) => {
     if (!value || typeof value !== "string") {
         return "";
     }
+
     return value.trim().replace(/[<>]/g, "");
 };
 
@@ -62,7 +63,9 @@ const getClientIp = (req) => {
  * Check if account is locked due to too many failed attempts
  */
 const isAccountLocked = async (institutionId, email) => {
-    const lockoutTime = new Date(Date.now() - LOCKOUT_MINUTES * 60 * 1000);
+    const lockoutTime = new Date(
+        Date.now() - LOCKOUT_MINUTES * 60 * 1000
+    );
 
     const result = await pool.query(
         `SELECT COUNT(*) AS failed_count
@@ -92,8 +95,8 @@ const recordLoginAttempt = async (
             email,
             ip_address,
             success
-         )
-         VALUES ($1, $2, $3, $4)`,
+        )
+        VALUES ($1, $2, $3, $4)`,
         [institutionId, email, ipAddress, success]
     );
 };
@@ -111,6 +114,9 @@ const clearFailedAttempts = async (institutionId, email) => {
     );
 };
 
+/**
+ * REGISTER
+ */
 const register = async (req, res) => {
     try {
         const {
@@ -148,6 +154,7 @@ const register = async (req, res) => {
         }
 
         const passwordError = validatePassword(password);
+
         if (passwordError) {
             return res.status(400).json({
                 success: false,
@@ -180,17 +187,16 @@ const register = async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, 12);
 
         const result = await pool.query(
-            `INSERT INTO users
-             (
+            `INSERT INTO users (
                 institution_id,
                 role_id,
                 first_name,
                 last_name,
                 email,
                 password_hash
-             )
-             VALUES ($1, $2, $3, $4, $5, $6)
-             RETURNING
+            )
+            VALUES ($1, $2, $3, $4, $5, $6)
+            RETURNING
                 id,
                 institution_id,
                 role_id,
@@ -210,7 +216,7 @@ const register = async (req, res) => {
             ]
         );
 
-        res.status(201).json({
+        return res.status(201).json({
             success: true,
             message: "User registered successfully",
             user: result.rows[0]
@@ -219,13 +225,17 @@ const register = async (req, res) => {
     } catch (error) {
         console.error("Registration error:", error);
 
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
-            message: "Server error during registration"
+            message: "Server error during registration",
+            error: error.message
         });
     }
 };
 
+/**
+ * LOGIN
+ */
 const login = async (req, res) => {
     try {
         const {
@@ -257,6 +267,7 @@ const login = async (req, res) => {
             });
         }
 
+        // Find user
         const result = await pool.query(
             `SELECT
                 u.id,
@@ -277,8 +288,8 @@ const login = async (req, res) => {
             [institution_id, normalizedEmail]
         );
 
+        // User does not exist
         if (result.rows.length === 0) {
-            // Record failed attempt
             await recordLoginAttempt(
                 institution_id,
                 normalizedEmail,
@@ -294,6 +305,7 @@ const login = async (req, res) => {
 
         const user = result.rows[0];
 
+        // Account inactive
         if (!user.is_active) {
             return res.status(403).json({
                 success: false,
@@ -301,13 +313,13 @@ const login = async (req, res) => {
             });
         }
 
+        // Compare password
         const passwordMatch = await bcrypt.compare(
             password,
             user.password_hash
         );
 
         if (!passwordMatch) {
-            // Record failed attempt
             await recordLoginAttempt(
                 institution_id,
                 normalizedEmail,
@@ -321,10 +333,12 @@ const login = async (req, res) => {
             });
         }
 
-        // Clear failed attempts on successful login
-        await clearFailedAttempts(institution_id, normalizedEmail);
+        // Successful login
+        await clearFailedAttempts(
+            institution_id,
+            normalizedEmail
+        );
 
-        // Record successful attempt
         await recordLoginAttempt(
             institution_id,
             normalizedEmail,
@@ -332,6 +346,7 @@ const login = async (req, res) => {
             true
         );
 
+        // Create JWT
         const token = jwt.sign(
             {
                 id: user.id,
@@ -345,9 +360,10 @@ const login = async (req, res) => {
             }
         );
 
+        // Never send password hash to frontend
         delete user.password_hash;
 
-        res.json({
+        return res.json({
             success: true,
             message: "Login successful",
             token,
@@ -355,15 +371,16 @@ const login = async (req, res) => {
             user
         });
 
-   } catch (error) {
-    console.error("Login error:", error);
+    } catch (error) {
+        console.error("Login error:", error);
 
-    res.status(500).json({
-        success: false,
-        message: "Server error during login",
-        error: error.message
-    });
-}
+        return res.status(500).json({
+            success: false,
+            message: "Server error during login",
+            error: error.message
+        });
+    }
+};
 
 module.exports = {
     register,
