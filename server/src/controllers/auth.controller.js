@@ -355,15 +355,15 @@ const login = async (req, res) => {
             user
         });
 
-    } catch (error) {
-        console.error("Login error:", error);
+   } catch (error) {
+    console.error("Login error:", error);
 
-        res.status(500).json({
-            success: false,
-            message: "Server error during login"
-        });
-    }
-};
+    res.status(500).json({
+        success: false,
+        message: "Server error during login",
+        error: error.message
+    });
+}
 
 module.exports = {
     register,
