@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "http://localhost:5000/api",
+  baseURL: "https://lms-backend-iuan.onrender.com/api",
   headers: {
     "Content-Type": "application/json",
   },
@@ -30,15 +30,12 @@ api.interceptors.response.use(
   },
   (error) => {
     if (error.response?.status === 401) {
-      // Token expired or invalid
       const token = localStorage.getItem("token");
 
       if (token) {
-        // Clear auth data
         localStorage.removeItem("token");
         localStorage.removeItem("user");
 
-        // Redirect to login
         if (window.location.pathname !== "/login") {
           window.location.href = "/login";
         }
