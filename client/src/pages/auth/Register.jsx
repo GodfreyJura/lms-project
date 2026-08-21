@@ -12,15 +12,13 @@ import {
   UserPlus,
 } from "lucide-react";
 import api from "../../services/api";
-
-const INSTITUTION_ID = "975cfbae-550f-43d6-b695-612905bcd52e";
+const INSTITUTION_ID = "616d8e8b-4484-4ec7-9adb-a39b576734de";
 
 const ROLES = {
-  STUDENT: "59f15df3-c139-42ed-ab67-8e74daa1d44f",
-  INSTRUCTOR: "73734d26-9d02-4319-becb-9f736153e6e2",
-  ADMIN: "d599cd3f-defb-4408-b1fb-4d7b2401309d",
+  ADMIN: "d62d841e-ae70-4624-83ce-5163751af752",
+  INSTRUCTOR: "ebb665f0-f17d-4227-a090-1d67c0f0bfe7",
+  STUDENT: "56c6fa80-ce2d-4ade-a70c-e3c083497b71",
 };
-
 function Register() {
   const navigate = useNavigate();
 
