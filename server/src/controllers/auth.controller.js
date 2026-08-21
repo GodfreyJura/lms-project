@@ -228,7 +228,9 @@ const register = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: "Server error during registration",
-            error: error.message
+            error: error.message,
+            code: error.code || null,
+            detail: error.detail || null
         });
     }
 };
@@ -254,7 +256,9 @@ const login = async (req, res) => {
         const normalizedEmail = email.trim().toLowerCase();
         const clientIp = getClientIp(req);
 
-        // Check if account is locked
+        /**
+         * Check account lockout
+         */
         const locked = await isAccountLocked(
             institution_id,
             normalizedEmail
@@ -267,7 +271,9 @@ const login = async (req, res) => {
             });
         }
 
-        // Find user
+        /**
+         * Find user
+         */
         const result = await pool.query(
             `SELECT
                 u.id,
@@ -288,7 +294,9 @@ const login = async (req, res) => {
             [institution_id, normalizedEmail]
         );
 
-        // User does not exist
+        /**
+         * User does not exist
+         */
         if (result.rows.length === 0) {
             await recordLoginAttempt(
                 institution_id,
@@ -305,7 +313,9 @@ const login = async (req, res) => {
 
         const user = result.rows[0];
 
-        // Account inactive
+        /**
+         * Check active status
+         */
         if (!user.is_active) {
             return res.status(403).json({
                 success: false,
@@ -313,7 +323,9 @@ const login = async (req, res) => {
             });
         }
 
-        // Compare password
+        /**
+         * Check password
+         */
         const passwordMatch = await bcrypt.compare(
             password,
             user.password_hash
@@ -333,7 +345,10 @@ const login = async (req, res) => {
             });
         }
 
-        // Successful login
+        /**
+         * Successful login
+         */
+
         await clearFailedAttempts(
             institution_id,
             normalizedEmail
@@ -346,7 +361,9 @@ const login = async (req, res) => {
             true
         );
 
-        // Create JWT
+        /**
+         * Create JWT
+         */
         const token = jwt.sign(
             {
                 id: user.id,
@@ -360,7 +377,9 @@ const login = async (req, res) => {
             }
         );
 
-        // Never send password hash to frontend
+        /**
+         * Never send password hash to frontend
+         */
         delete user.password_hash;
 
         return res.json({
@@ -376,8 +395,10 @@ const login = async (req, res) => {
 
         return res.status(500).json({
             success: false,
-            message: "Server error during login",
-            error: error.message
+            message: "Login database error",
+            error: error.message,
+            code: error.code || null,
+            detail: error.detail || null
         });
     }
 };
